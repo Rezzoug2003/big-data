@@ -1,0 +1,17 @@
+# ===== 1. Use base image with Jupyter and Python =====
+FROM jupyter/base-notebook:latest
+
+# ===== 2. Set working directory =====
+WORKDIR /home/jovyan/work
+
+# ===== 3. Copy your project files into the container =====
+COPY . .
+
+# ===== 4. Install Python libraries you might need =====
+RUN pip install pandas numpy matplotlib seaborn PyPDF2 pdfplumber
+
+# ===== 5. Expose Jupyter port =====
+EXPOSE 8888
+
+# ===== 6. Start Jupyter Notebook automatically =====
+CMD ["start-notebook.sh", "--NotebookApp.token=''", "--NotebookApp.password=''"]
