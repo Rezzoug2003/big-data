@@ -1,0 +1,289 @@
+C:\WINDOWS\system32>docker run --name mon-cassandra -d -p 9042:9042 cassandra:4.1
+Unable to find image 'cassandra:4.1' locally
+4.1: Pulling from library/cassandra
+cbac7e3957e4: Pull complete
+7e49dc6156b0: Pull complete
+afbec7c91e5e: Pull complete
+e8db061f1dd5: Pull complete
+d2a7c5c92273: Pull complete
+b93334ff643d: Pull complete
+e10875650961: Pull complete
+66c894d7b18a: Pull complete
+f2a58a7b9815: Pull complete
+1842296f3005: Pull complete
+Digest: sha256:ef317ed8ee30492ba1d3841093540e56d5347f3b18da458042839d8d312d98b7
+Status: Downloaded newer image for cassandra:4.1
+4c799554d2eba216f8cbbe94d409797b46de78fae6ba093750abb84147ef52eb
+# Create the keyspace (database)
+C:\WINDOWS\system32>docker exec -it mon-cassandra cqlsh
+Connected to Test Cluster at 127.0.0.1:9042
+[cqlsh 6.1.0 | Cassandra 4.1.10 | CQL spec 3.4.6 | Native protocol v5]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE IF NOT EXISTS resto_NY
+   ... WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor': 1 };
+cqlsh>
+cqlsh> USE resto_NY;
+cqlsh:resto_ny>
+# 3) Create the tables (Column Families)
+cqlsh:resto_ny> CREATE TABLE IF NOT EXISTS Restaurant (
+            ...   id INT,
+            ...   name VARCHAR,
+            ...   borough VARCHAR,
+            ...   buildingnum VARCHAR,
+            ...   street VARCHAR,
+            ...   zipcode INT,
+            ...   phone text,
+            ...   cuisinetype VARCHAR,
+            ...   PRIMARY KEY (id)
+            ... );
+cqlsh:resto_ny>
+cqlsh:resto_ny> CREATE INDEX IF NOT EXISTS fk_Restaurant_cuisine ON Restaurant (cuisinetype);
+cqlsh:resto_ny>
+cqlsh:resto_ny> CREATE TABLE IF NOT EXISTS Inspection (
+            ...   idrestaurant INT,
+            ...   inspectiondate date,
+            ...   violationcode VARCHAR,
+            ...   violationdescription VARCHAR,
+            ...   criticalflag VARCHAR,
+            ...   score INT,
+            ...   grade VARCHAR,
+            ...   PRIMARY KEY (idrestaurant, inspectiondate)
+            ... );
+cqlsh:resto_ny>
+cqlsh:resto_ny> CREATE INDEX IF NOT EXISTS fk_Inspection_grade ON Inspection (grade);
+# ) Load the CSV files into the container
+C:\WINDOWS\system32>docker cp "C:\Users\DELL\Desktop\big data\restaurants\restaurants.csv" mon-cassandra:/
+Successfully copied 2.11MB to mon-cassandra:/
+
+C:\WINDOWS\system32>docker cp "C:\Users\DELL\Desktop\big data\restaurants\restaurants_inspections.csv" mon-cassandra:/
+Successfully copied 82.5MB to mon-cassandra:/
+
+C:\WINDOWS\system32>
+C:\WINDOWS\system32>docker exec -it mon-cassandra ls /
+bin   __cacert_entrypoint.sh  etc   lib    lib64   media  opt   restaurants.csv              root  sbin  sys  usr
+boot  dev                     home  lib32  libx32  mnt    proc  restaurants_inspections.csv  run   srv   tmp  var
+
+cqlsh:resto_ny> USE resto_NY;
+USE resto_NY;
+
+COPY Restaurant (id, name, borough, buildingnum, street, zipcode, phone, cuisinetype)
+FROM '/restaurants.csv' WITH DELIMITER=',';
+
+COPY Inspection (idrestaurant, inspectiondate, violationcode, violationdescription, criticalflag, score, grade)
+FROM '/restaurants_inspections.csv' WITH DELIMITER=',';
+
+cqlsh:resto_ny> SELECT count(*) FROM Restaurant;
+
+ count
+-------
+ 25624
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:resto_ny> SELECT count(*) FROM Inspection;
+
+ count
+--------
+ 149818
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+#How to inspect table schemas
+cqlsh:resto_ny> DESC TABLE Restaurant;
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    borough text,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+cqlsh:resto_ny> DESC TABLE Inspection;
+
+CREATE TABLE resto_ny.inspection (
+    idrestaurant int,
+    inspectiondate date,
+    criticalflag text,
+    grade text,
+    score int,
+    violationcode text,
+    violationdescription text,
+    PRIMARY KEY (idrestaurant, inspectiondate)
+) WITH CLUSTERING ORDER BY (inspectiondate ASC)
+    AND additional_write_policy = '99p'
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_inspection_grade ON resto_ny.inspection (grade);
+#The required CQL queries (one by one) — with simple explanation 
+#1_List of all the restaurants
+SELECT * FROM Restaurant;
+cqlsh:resto_ny> SELECT * FROM Restaurant LIMIT 5;
+
+ id       | borough       | buildingnum | cuisinetype | name              | phone      | street           | zipcode
+----------+---------------+-------------+-------------+-------------------+------------+------------------+---------
+ 40786914 | STATEN ISLAND |        1465 |    American |     BOSTON MARKET | 7188151198 |    FOREST AVENUE |   10302
+ 40366162 |        QUEENS |       11909 |    American |  LENIHAN'S SALOON | 7188469770 |  ATLANTIC AVENUE |   11418
+ 41692194 |     MANHATTAN |         360 |        Thai |     BANGKOK HOUSE | 2125415943 | WEST   46 STREET |   10036
+ 41430956 |      BROOKLYN |        2225 |   Caribbean | TJ'S TASTY CORNER | 7184844783 |    TILDEN AVENUE |   11226
+ 41395531 |        QUEENS |         126 |    American | NATHAN'S HOT DOGS | 7185958100 | ROOSEVELT AVENUE |   11368
+ # name only
+ cqlsh:resto_ny> SELECT name FROM Restaurant LIMIT 5;
+
+ name
+-------------------
+     BOSTON MARKET
+  LENIHAN'S SALOON
+     BANGKOK HOUSE
+ TJ'S TASTY CORNER
+ NATHAN'S HOT DOGS
+
+(5 rows)
+#Name and borough of the restaurant whose id = 41569764
+cqlsh:resto_ny> SELECT name, borough FROM Restaurant WHERE id = 41569764;
+
+ name    | borough
+---------+----------
+ BACCHUS | BROOKLYN
+
+(1 rows)
+#Dates and grades of inspections of that restaurant (id 41569764)
+cqlsh:resto_ny> SELECT inspectiondate, grade FROM Inspection
+            ... WHERE idrestaurant = 41569764;
+
+ inspectiondate | grade
+----------------+-------
+     2013-06-27 |  null
+     2013-07-08 |     A
+     2013-12-26 |  null
+     2014-02-05 |     A
+     2014-07-17 |  null
+     2014-08-06 |     A
+     2015-01-08 |     A
+     2016-02-25 |     A
+
+(8 rows)
+# Names of restaurants of French cuisine
+cqlsh:resto_ny> SELECT name FROM Restaurant WHERE cuisinetype = 'French' ALLOW FILTERING;SELECT name FROM Restaurant WHERE cuisinetype = 'French' ALLOW FILTERING;
+
+ name
+--------------------------------
+                        MATISSE
+                        ALMANAC
+                   TOUT VA BIEN
+                          FELIX
+             CREPES ON COLUMBUS
+               THE BARONESS BAR
+                     THE SIMONE
+                      FP BAKERY
+                  VIN ET FLEURS
+       CAFE BOULUD/BAR PLEIADES
+                        COCOTTE
+                  Bourgeois Pig
+              DELICE & SARRASIN
+               LA TARTE FLAMBEE
+                   JEAN GEORGES
+                     MAISON MAY
+                         DANIEL
+                    SAJU BISTRO
+              LE PAIN QUOTIDIEN
+                     CAFE CLUNY
+                         BIN 71
+                 CREPES CELSTES
+                 JOYCE BAKESHOP
+         THE FOX AND THE CREPES
+         ---MORE---
+#Names of restaurants located in BROOKLYN (borough = 'BROOKLYN')
+cqlsh:resto_ny> SELECT name FROM Restaurant WHERE borough = 'BROOKLYN' ALLOW FILTERING;
+
+ name
+--------------------------------------------
+                          TJ'S TASTY CORNER
+                             KING'S KITCHEN
+                         LEO'S DELI & GRILL
+                           JIN SUSHI & THAI
+                        CROWN FRIED CHICKEN
+                            BROOKLYN CAFE 1
+                       CRESCENT COFFEE SHOP
+                LA ROYALE BEER BURGER HOUSE
+                         CONNECTICUT MUFFIN
+                        GREENSTREETS SALADS
+                                  THE TOPAZ
+                             LA GUARIDA BAR
+                         MAMA ROZ SOUL FOOD
+                           HONG KONG BAKERY
+                 BROOKLYN BRIDGE GARDEN BAR
+                                THE CANTINE
+                              THE GUMBO BRO
+                          DAVEY'S ICE CREAM
+                        CROWN FRIED CHICKEN
+                                THAI TONY'S
+                               CHINA DRAGON
+                           KNAPP BAGEL CAFE
+                     SCHNITZI SCHNITZEL BAR
+                            INDIGO MURPHY'S
+                    EDDIE JR'S SPORT LOUNGE
+                       EL GRAN MAR DE PLATA
+                               MALAY BAKERY
+                EL NUEVO BARZOLA RESTAURANT
+                         PURITAN RESTAURANT
+                          EL CHARRO POBLANO
+#Grades and scores for inspections of restaurant 41569764 with score ≥ 10
+cqlsh:resto_ny> SELECT grade, score FROM Inspection
+            ... WHERE idrestaurant = 41569764 AND score >= 10 ALLOW FILTERING;
+
+ grade | score
+-------+-------
+  null |    19
+     A |    10
+
+(2 rows)
+#Number of rows returned by the previous query
+cqlsh:resto_ny> SELECT count(*) FROM Inspection WHERE score > 30 ALLOW FILTERING;
+
+ count
+-------
+  8714
+
+(1 rows)
+
