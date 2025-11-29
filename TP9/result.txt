@@ -1,0 +1,341 @@
+PS C:\Users\DELL\Desktop\big data\big-data\TP9> docker ps
+CONTAINER ID   IMAGE                                             COMMAND                  CREATED        STATUS
+ PORTS                                                                                      NAMES
+7d189219d3b5   bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8   "/entrypoint.sh /run…"   10 hours ago   Up 22 seconds (health: starting)  
+ 9864/tcp                                                                                   hadoop-worker2
+6918a5df29c6   bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8   "/entrypoint.sh /run…"   10 hours ago   Up 22 seconds (health: starting)  
+ 9864/tcp                                                                                   hadoop-worker1
+ead91b45e56b   bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8   "/entrypoint.sh /run…"   10 hours ago   Up 23 seconds (health: starting)  
+ 0.0.0.0:8088->8088/tcp, [::]:8088->8088/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp   hadoop-master
+PS C:\Users\DELL\Desktop\big data\big-data\TP9> docker exec -it hadoop-master bash
+root@ead91b45e56b:/# hdfs --daemon start namenode
+root@ead91b45e56b:/# hdfs --daemon start datanode
+root@ead91b45e56b:/# jps
+1858 Jps
+88 NameNode
+1785 DataNode
+root@ead91b45e56b:/# yarn --daemon start resourcemanager
+root@ead91b45e56b:/# yarn --daemon start nodemanager
+root@ead91b45e56b:/# jps
+88 NameNode
+1785 DataNode
+2298 Jps
+1915 ResourceManager
+2188 NodeManager
+root@ead91b45e56b:/# echo "Hello Spark Wordcount! Hello Hadoop Also :)" > file1.txt
+root@ead91b45e56b:/# spark-shell
+/spark/bin/load-spark-env.sh: line 68: ps: command not found
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+25/11/28 21:21:35 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Spark context Web UI available at http://ead91b45e56b:4040
+Spark context available as 'sc' (master = local[*], app id = local-1764364896662).
+Spark session available as 'spark'.
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 3.5.0
+      /_/
+
+Using Scala version 2.12.18 (OpenJDK 64-Bit Server VM, Java 1.8.0_232)
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> val lines = sc.textFile("file1.txt")
+lines: org.apache.spark.rdd.RDD[String] = file1.txt MapPartitionsRDD[1] at textFile at <console>:23
+
+scala> val words = lines.flatMap(_.split("\\s+"))
+words: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[2] at flatMap at <console>:23
+
+scala> val wc = words.map(w => (w, 1)).reduceByKey(_ + _)
+wc: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[4] at reduceByKey at <console>:23
+
+scala> wc.saveAsTextFile("file1.count")
+
+scala> root@ead91b45e56b:/# hdfs dfs -get file1.count
+2025-11-28 21:23:57,717 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+root@ead91b45e56b:/# jps
+2931 Jps
+88 NameNode
+1785 DataNode
+1915 ResourceManager
+2188 NodeManager
+root@ead91b45e56b:/# ls
+KEYS  boot  entrypoint.sh  file1.count  hadoop       home  lib64  mnt  proc  run     sbin   spark-3.5.0-bin-hadoop3.tgz  sys  usr
+bin   dev   etc            file1.txt    hadoop-data  lib   media  opt  root  run.sh  spark  srv                          tmp  var
+root@ead91b45e56b:/# ls -l
+total 391456
+-rw-r--r--   1 root root    325083 Feb  4  2020 KEYS
+drwxr-xr-x   1 root root      4096 Feb  4  2020 bin
+drwxr-xr-x   2 root root      4096 Sep  8  2019 boot
+drwxr-xr-x   5 root root       340 Nov 28 21:06 dev
+-rwxr-xr-x   1 root root      4155 Feb  4  2020 entrypoint.sh
+drwxr-xr-x   1 root root      4096 Nov 28 14:48 etc
+drwxr-xr-x   2 root root      4096 Nov 28 21:23 file1.count
+-rw-r--r--   1 root root        44 Nov 28 21:19 file1.txt
+drwxr-xr-x   3 root root      4096 Feb  4  2020 hadoop
+drwxr-xr-x   2 root root      4096 Feb  4  2020 hadoop-data
+drwxr-xr-x   2 root root      4096 Sep  8  2019 home
+drwxr-xr-x   1 root root      4096 Jan 30  2020 lib
+drwxr-xr-x   2 root root      4096 Jan 30  2020 lib64
+drwxr-xr-x   2 root root      4096 Jan 30  2020 media
+drwxr-xr-x   2 root root      4096 Jan 30  2020 mnt
+drwxr-xr-x   1 root root      4096 Feb  4  2020 opt
+dr-xr-xr-x 198 root root         0 Nov 28 21:06 proc
+drwx------   1 root root      4096 Nov 28 15:54 root
+drwxr-xr-x   3 root root      4096 Jan 30  2020 run
+-rwxr-xr-x   1 root root       494 Feb  4  2020 run.sh
+drwxr-xr-x   1 root root      4096 Feb  4  2020 sbin
+drwxr-xr-x  13 1000 1000      4096 Sep  9  2023 spark
+-rw-r--r--   1 root root 400395283 Sep  9  2023 spark-3.5.0-bin-hadoop3.tgz
+drwxr-xr-x   2 root root      4096 Jan 30  2020 srv
+dr-xr-xr-x  13 root root         0 Nov 28 21:06 sys
+drwxrwxrwt   1 root root      4096 Nov 28 21:23 tmp
+drwxr-xr-x   1 root root      4096 Jan 30  2020 usr
+drwxr-xr-x   1 root root      4096 Jan 30  2020 var
+root@ead91b45e56b:/# hdfs dfs -cat file1.count/part-00000
+2025-11-28 21:42:03,643 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+(Hello,2)
+(Wordcount!,1)
+root@ead91b45e56b:/# 
+root@ead91b45e56b:/# hdfs dfs -cat file1.count/part-00001
+2025-11-28 21:49:31,237 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+(Spark,1)
+(:),1)
+(Also,1)
+(Hadoop,1)
+root@ead91b45e56b:/# 
+____________________________________________________________________________________________________________________________
+                                          Part java with spark
+
+C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>mvn package
+Picked up JAVA_TOOL_OPTIONS: -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< spark.batch:wordcount-spark >---------------------
+[INFO] Building wordcount-spark 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] 2 problems were encountered while building the effective model for org.apache.yetus:audience-annotations:jar:0.5.0 during dependency collection step for project (use -X to see details)
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ wordcount-spark ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ wordcount-spark ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ wordcount-spark ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] skip non existing resourceDirectory C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark\src\test\resources     
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ wordcount-spark ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ wordcount-spark ---
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ wordcount-spark ---
+Downloading from central: https://repo.maven.apache.org/maven2/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar       
+Downloaded from central: https://repo.maven.apache.org/maven2/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar (6.8 MB at 82 kB/s)
+[INFO] Building jar: C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark\target\wordcount-spark-1.0-SNAPSHOT.jar      
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:30 min
+[INFO] Finished at: 2025-11-29T17:07:29+01:00
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>docker cp target/wordcount-spark-1.0-SNAPSHOT.jar hadoop-master:/root/wordcount-spark.jar
+Successfully copied 6.66kB to hadoop-master:/root/wordcount-spark.jar
+
+ C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>docker exec -it hadoop-master bash
+root@ead91b45e56b:/# hdfs dfs -mkdir -p input
+root@ead91b45e56b:/# echo "apple banana apple orange banana apple" > purchases.txt
+root@ead91b45e56b:/# hdfs dfs -put purchases.txt input/
+2025-11-29 16:14:57,756 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+
+root@ead91b45e56b:/# spark-submit --class spark.batch.tp21.WordCountTask --master local /root/wordcount-spark.jar input/purchases.txt out-spark
+                     spark-submit --class spark.batch.tp21.WordCountTask --master yarn --deploy-mode cluster /root/wordcount-spark.jar input/purchases.txt out-spark2
+25/11/29 16:34:01 IN
+
+root@ead91b45e56b:/# hdfs dfs -cat out-spark/part-00000
+2025-11-29 16:34:31,487 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+(banana,2)
+(orange,1)
+(apple,3)
+root@ead91b45e56b:/# 
+
+
+root@ead91b45e56b:/# spark-submit --class spark.batch.tp21.WordCountTask --master yarn --deploy-mode cluster /root/wordcount-spark.jar input/purchases.txt out-spark2
+25/11/29 19:34:44 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+25/11/29 19:34:44 INFO DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at /0.0.0.0:8032
+25/11/29 19:34:48 INFO Configuration: resource-types.xml not found
+25/11/29 19:34:48 INFO ResourceUtils: Unable to find 'resource-types.xml'.
+25/11/29 19:34:48 INFO Client: Verifying our application has not requested more than the maximum memory capability of the cluster (8192 MB per container)
+25/11/29 19:34:48 INFO Client: Will allocate AM container, with 1408 MB memory including 384 MB overhead
+25/11/29 19:34:48 INFO Client: Setting up container launch context for our AM
+25/11/29 19:34:48 INFO Client: Setting up the launch environment for our AM container
+25/11/29 19:34:48 INFO Client: Preparing resources for our AM container
+25/11/29 19:34:48 WARN Client: Neither spark.yarn.jars nor spark.yarn.archive is set, falling back to uploading libraries under SPARK_HOME.
+25/11/29 19:35:00 INFO Client: Uploading resource file:/tmp/spark-397776d3-9ce4-4967-a305-5247017588ae/__spark_libs__7969515845752729663.zip -> hdfs://ead91b45e56b:8020/user/root/.sparkStaging/application_1764430941445_0001/__spark_libs__7969515845752729663.zip
+25/11/29 19:35:07 INFO Client: Uploading resource file:/root/wordcount-spark.jar -> hdfs://ead91b45e56b:8020/user/root/.sparkStaging/application_1764430941445_0001/wordcount-spark.jar
+25/11/29 19:35:08 INFO Client: Uploading resource file:/tmp/spark-397776d3-9ce4-4967-a305-5247017588ae/__spark_conf__1669560020079697225.zip -> hdfs://ead91b45e56b:8020/user/root/.sparkStaging/application_1764430941445_0001/__spark_conf__.zip
+25/11/29 19:35:08 INFO SecurityManager: Changing view acls to: root
+25/11/29 19:35:08 INFO SecurityManager: Changing modify acls to: root
+25/11/29 19:35:08 INFO SecurityManager: Changing view acls groups to:
+25/11/29 19:35:08 INFO SecurityManager: Changing modify acls groups to:
+25/11/29 19:35:08 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: root; groups with view permissions: EMPTY; users with modify permissions: root; groups with modify permissions: EMPTY
+25/11/29 19:35:08 INFO Client: Submitting application application_1764430941445_0001 to ResourceManager
+25/11/29 19:35:09 INFO YarnClientImpl: Submitted application application_1764430941445_0001
+25/11/29 19:35:10 INFO Client: Application report for application_1764430941445_0001 (state: ACCEPTED)
+25/11/29 19:35:10 INFO Client: 
+         client token: N/A
+         diagnostics: [Sat Nov 29 19:35:10 +0000 2025] Application is Activated, waiting for resources to be assigned for AM.  Details : AM Partition = <DEFAULT_PARTITION> ; Partition Resource = <memory:8192, vCores:8> ; Queue's Absolute capacity = 100.0 % ; Queue's Absolute used capacity = 0.0 % ; Queue's Absolute max capacity = 
+100.0 % ; Queue's capacity (absolute resource) = <memory:8192, vCores:8> ; Queue's used capacity (absolute resource) = <memory:0, vCores:0> ; Queue's max capacity (absolute resource) = <memory:8192, vCores:8> ;
+         ApplicationMaster host: N/A
+         ApplicationMaster RPC port: -1
+         queue: default
+         start time: 1764444909224
+         final status: UNDEFINED
+         tracking URL: http://ead91b45e56b:8088/proxy/application_1764430941445_0001/
+         user: root
+
+25/11/29 19:35:34 INFO Client: Application report for application_1764430941445_0001 (state: RUNNING)
+25/11/29 19:35:34 INFO Client: 
+         client token: N/A
+         diagnostics: N/A
+         ApplicationMaster host: ead91b45e56b
+         ApplicationMaster RPC port: 41381
+         queue: default
+         start time: 1764444909224
+         final status: UNDEFINED
+         tracking URL: http://ead91b45e56b:8088/proxy/application_1764430941445_0001/
+         user: root
+25/11/29 19:36:04 INFO Client: Application report for application_1764430941445_0001 (state: RUNNING)
+25/11/29 19:36:31 INFO Client: Application report for application_1764430941445_0001 (state: FINISHED)
+25/11/29 19:36:31 INFO Client:
+         client token: N/A
+         diagnostics: N/A
+         ApplicationMaster host: ead91b45e56b
+         ApplicationMaster RPC port: 41381
+         queue: default
+         start time: 1764444909224
+         final status: SUCCEEDED
+         tracking URL: http://ead91b45e56b:8088/proxy/application_1764430941445_0001/
+         user: root
+25/11/29 19:36:31 INFO ShutdownHookManager: Shutdown hook called
+25/11/29 19:36:31 INFO ShutdownHookManager: Deleting directory /tmp/spark-397776d3-9ce4-4967-a305-5247017588ae
+25/11/29 19:36:31 INFO ShutdownHookManager: Deleting directory /tmp/spark-8c48e674-4c82-4fcc-aa74-72d028ca06e4
+root@ead91b45e56b:/# 
+root@ead91b45e56b:/# hdfs dfs -cat out-spark2/part-00000
+2025-11-29 19:36:53,353 INFO sasl.SaslDataTransferClient: SASL encryption trust check: localHostTrusted = false, remoteHostTrusted = false
+(orange,1)
+(apple,3)
+root@ead91b45e56b:/# 
+
+_______________________________________________________________________________________________________________________________________________
+                                                              Phase 4: Spark Streaming
+mvn package
+
+Terminal-1___________________________________________________________________________________________________
+:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>mvn package
+Picked up JAVA_TOOL_OPTIONS: -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< spark.batch:wordcount-spark >---------------------
+[INFO] Building wordcount-spark 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] 2 problems were encountered while building the effective model for org.apache.yetus:audience-annotations:jar:0.5.0 during dependency collection step for project (use -X to see details)
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ wordcount-spark ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ wordcount-spark ---
+[INFO] Recompiling the module because of added or removed source files.
+[WARNING] File encoding has not been set, using platform encoding UTF-8, i.e. build is platform dependent!
+[INFO] Compiling 3 source files with javac [debug target 1.8] to target\classes
+[WARNING] bootstrap class path not set in conjunction with -source 8
+[WARNING] source value 8 is obsolete and will be removed in a future release
+[WARNING] target value 8 is obsolete and will be removed in a future release
+[WARNING] To suppress warnings about obsolete options, use -Xlint:-options.
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[INFO] /C:/Users/DELL/Desktop/big data/big-data/TP9/wordcount-spark/src/main/java/spark/streaming/tp22/Stream.java: C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark\src\main\java\spark\streaming\tp22\Stream.java uses or overrides a deprecated API.
+[INFO] /C:/Users/DELL/Desktop/big data/big-data/TP9/wordcount-spark/src/main/java/spark/streaming/tp22/Stream.java: Recompile 
+with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ wordcount-spark ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] skip non existing resourceDirectory C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ wordcount-spark ---
+[INFO] Recompiling the module because of changed dependency.
+[WARNING] File encoding has not been set, using platform encoding UTF-8, i.e. build is platform dependent!
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ wordcount-spark ---
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ wordcount-spark ---
+[INFO] Building jar: C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark\target\wordcount-spark-1.0-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  35.674 s
+[INFO] Finished at: 2025-11-29T20:52:27+01:00
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>docker cp target/wordcount-spark-1.0-SNAPSHOT.jar hadoop-master:/root/stream-1.jar
+Successfully copied 9.22kB to hadoop-master:/root/stream-1.jar
+
+C:\Users\DELL\Desktop\big data\big-data\TP9\wordcount-spark>docker exec -it hadoop-master bash
+root@ead91b45e56b:/# apt-get update && apt-get install -y netcat-openbsd
+Ign:1 http://archive.debian.org/debian stretch InRelease
+Hit:2 http://archive.debian.org/debian stretch Release
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+The following NEW packages will be installed:
+  netcat-openbsd
+0 upgraded, 1 newly installed, 0 to remove and 25 not upgraded.
+Need to get 38.2 kB of archives.
+After this operation, 89.1 kB of additional disk space will be used.
+Get:1 http://archive.debian.org/debian stretch/main amd64 netcat-openbsd amd64 1.130-3 [38.2 kB]
+Fetched 38.2 kB in 1s (20.5 kB/s)      
+debconf: delaying package configuration, since apt-utils is not installed
+Selecting previously unselected package netcat-openbsd.
+(Reading database ... 22899 files and directories currently installed.)
+Preparing to unpack .../netcat-openbsd_1.130-3_amd64.deb ...
+Unpacking netcat-openbsd (1.130-3) ...
+Setting up netcat-openbsd (1.130-3) ...
+update-alternatives: using /bin/nc.openbsd to provide /bin/nc (nc) in auto mode
+root@ead91b45e56b:/# nc -lk 9999
+hello spark hello worl
+hello spark hello worl hwo are you 
+^C
+root@ead91b45e56b:/# nc -lk 9999
+hello spark hello wold
+ 
+
+ Terminal 2 (The Spark Receiver)____________________________________________________________________________________________________________________________
+
+docker exec -it hadoop-master bash
+
+source ~/.bashrc
+ spark-submit --class spark.streaming.tp22.Stream --master local /root/stream-1.jar
+ -------------------------------------------
+Time: 1732900000000 ms
+-------------------------------------------
+(hello,2)
+(spark,1)
+(world,1)
+
+
+
